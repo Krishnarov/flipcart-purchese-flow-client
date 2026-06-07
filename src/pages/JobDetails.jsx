@@ -32,9 +32,10 @@ function JobDetails() {
   const [toasts, setToasts] = useState([]);
 
   // Server-side state
-  const [tableParams, setTableParams] = useState({ page: 1, limit: 50, search: '', sortField: 'createdAt', sortOrder: 'asc', startDate: '', endDate: '' });
+  const [tableParams, setTableParams] = useState({ page: 1, limit: 50, search: '', sortField: 'createdAt', sortOrder: 'desc', startDate: '', endDate: '' });
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [liveLog, setLiveLog] = useState(null);
 
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
@@ -103,9 +104,16 @@ function JobDetails() {
         fetchDetails();
       }
     };
+    const handleLiveLog = (data) => {
+      if (data.jobId === jobId) {
+        setLiveLog(data);
+      }
+    };
     socket.on('job-update', handleJobUpdate);
+    socket.on('live-log', handleLiveLog);
     return () => {
       socket.off('job-update', handleJobUpdate);
+      socket.off('live-log', handleLiveLog);
     };
   }, [jobId, fetchDetails]);
 
@@ -123,13 +131,13 @@ function JobDetails() {
       startDate: tableParams.startDate,
       endDate: tableParams.endDate
     });
-    
+
     try {
       const res = await fetch(`http://localhost:5000/api/purchases/export?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Export failed');
-      
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -287,12 +295,13 @@ function JobDetails() {
     },
     {
       label: 'Status',
-      key: 'status',
-      render: (row) => (
-        <span className={`status-badge status-${row.status === 'success' ? 'success' : (row.status || 'pending')}`}>
-          {row.status || 'pending'}
+      key: 'status', 
+      render: (r) => (
+        <span className={`status-badge status-${r.status}`} style={r.status === 'inprogress' ? { background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)' } : {}}>
+          {r.status === 'inprogress' && <span className="spinner" style={{ width: '10px', height: '10px', borderWidth: '1.5px', marginRight: '6px' }} />}
+          {r.status === 'inprogress' ? 'IN PROGRESS' : r.status.toUpperCase()}
         </span>
-      )
+      ) 
     },
     {
       label: 'Completed At',
@@ -406,6 +415,17 @@ function JobDetails() {
                   {selectedFileDetails.jobReason}
                 </div>
               )}
+              {liveLog && (
+                <div className="detail-log" style={{ marginTop: '12px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '12px 16px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <span className="spinner" style={{ width: '12px', height: '12px', borderWidth: '2px', borderColor: '#3b82f6', borderTopColor: 'transparent' }} />
+                    <strong style={{ color: '#60a5fa', fontSize: '13px' }}>Currently Processing: {liveLog.email}</strong>
+                  </div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginLeft: '20px' }}>
+                    Step: <span style={{ color: '#e2e8f0' }}>{liveLog.message}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="detail-stats-box">
@@ -495,7 +515,7 @@ function JobDetails() {
             </div>
           </div>
 
-          <DataTable 
+          <DataTable
             data={processedData}
             columns={columns}
             keyField="_id"
@@ -523,27 +543,27 @@ function JobDetails() {
       />
 
       {selectedScreenshot && (
-        <div 
-          className="modal-overlay" 
+        <div
+          className="modal-overlay"
           onClick={() => setSelectedScreenshot(null)}
           style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
-          <div 
-            className="modal-content" 
+          <div
+            className="modal-content"
             onClick={e => e.stopPropagation()}
             style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}
           >
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={() => setSelectedScreenshot(null)}
               style={{ position: 'fixed', top: '20px', right: '20px', background: 'rgba(0,0,0,0.5)', borderRadius: '50%', border: 'none', color: 'white', cursor: 'pointer', zIndex: 1001, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}
             >
               <XCircle size={32} />
             </button>
-            <img 
-              src={`http://localhost:5000/${selectedScreenshot}`} 
-              alt="Screenshot" 
-              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+            <img
+              src={`http://localhost:5000/${selectedScreenshot}`}
+              alt="Screenshot"
+              style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
             />
           </div>
         </div>

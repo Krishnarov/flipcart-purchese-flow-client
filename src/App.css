@@ -1399,6 +1399,12 @@
   border: 1px solid rgba(156, 163, 175, 0.2);
 }
 
+.status-idle {
+  background: rgba(156, 163, 175, 0.15);
+  color: #d1d5db;
+  border: 1px solid rgba(156, 163, 175, 0.25);
+}
+
 .status-success {
   background: rgba(16, 185, 129, 0.1);
   color: #34d399;

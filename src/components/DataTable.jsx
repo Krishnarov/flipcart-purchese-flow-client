@@ -25,8 +25,8 @@ function DataTable({
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [sortField, setSortField] = useState('createdAt');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useState('');
+  const [sortOrder, setSortOrder] = useState('');
   const [currentLimit, setCurrentLimit] = useState(limit);
 
   // Trigger onTableChange when filters change (debounced for search)

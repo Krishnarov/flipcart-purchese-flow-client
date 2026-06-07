@@ -11,6 +11,7 @@ function Dashboard({ user, onLogout, activeTab }) {
   const [globalStats, setGlobalStats] = useState({ jobs: 0, total: 0, success: 0, failed: 0 });
   const [recentJobs, setRecentJobs] = useState([]);
   const [runningJobs, setRunningJobs] = useState(0);
+  const [liveLog, setLiveLog] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
 
@@ -54,9 +55,15 @@ function Dashboard({ user, onLogout, activeTab }) {
       fetchStats();
     };
 
+    const handleLiveLog = (data) => {
+      setLiveLog(data);
+    };
+
     socket.on('job-update', handleJobUpdate);
+    socket.on('live-log', handleLiveLog);
     return () => {
       socket.off('job-update', handleJobUpdate);
+      socket.off('live-log', handleLiveLog);
     };
   }, [activeTab]);
 
@@ -172,6 +179,41 @@ function Dashboard({ user, onLogout, activeTab }) {
                   </div>
                 </div>
               </div>
+
+              {/* ── Live Automation Activity ── */}
+              {liveLog && (
+                <div className="card" style={{ marginBottom: '24px', padding: '20px', background: 'linear-gradient(145deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.8) 100%)', border: '1px solid rgba(59,130,246,0.3)', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: '#3b82f6', boxShadow: '0 0 10px #3b82f6' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Activity size={20} color="#60a5fa" />
+                      <h3 style={{ margin: 0, color: '#e2e8f0', fontSize: '16px' }}>Live Automation Activity</h3>
+                    </div>
+                    <span className="status-badge" style={{ background: 'rgba(59,130,246,0.1)', color: '#60a5fa', border: '1px solid rgba(59,130,246,0.3)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span className="spinner" style={{ width: '10px', height: '10px', borderWidth: '1.5px', borderColor: '#60a5fa', borderTopColor: 'transparent' }} />
+                      RUNNING
+                    </span>
+                  </div>
+                  <div style={{ background: 'rgba(0,0,0,0.3)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <Mail size={16} color="var(--text-muted)" />
+                      <strong style={{ color: '#f8fafc', fontSize: '15px' }}>{liveLog.email}</strong>
+                      {liveLog.name && <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>— {liveLog.name}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingLeft: '24px' }}>
+                      <ArrowRight size={16} color="#60a5fa" style={{ marginTop: '2px' }} />
+                      <span style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.5' }}>
+                        {liveLog.message}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                    <button type="button" className="text-btn" onClick={() => navigate(`/job/${liveLog.jobId}`)} style={{ fontSize: '13px', color: '#60a5fa' }}>
+                      View Job Details →
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="dashboard-content-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'flex-start' }}>
                 {/* ── Recent Activity Table ── */}
