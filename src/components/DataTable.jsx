@@ -99,34 +99,64 @@ function DataTable({
         <div className="datatable-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             <div className="input-group" style={{ position: 'relative', width: '250px' }}>
-              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)' }} />
               <input 
                 type="text" 
                 placeholder="Search..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                style={{ paddingLeft: '38px', width: '100%', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-primary)' }}
+                style={{ 
+                  paddingLeft: '38px', width: '100%', height: '40px', borderRadius: '8px', 
+                  border: '1px solid var(--border-light)', 
+                  background: 'rgba(255, 255, 255, 0.04)', 
+                  color: 'var(--text-primary)',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'var(--transition)'
+                }}
+                onFocus={(e) => { e.target.style.borderColor = 'var(--accent-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; e.target.style.background = 'rgba(255,255,255,0.06)' }}
+                onBlur={(e) => { e.target.style.borderColor = 'var(--border-light)'; e.target.style.boxShadow = 'none'; e.target.style.background = 'rgba(255,255,255,0.04)' }}
               />
             </div>
             
             <div className="input-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{ position: 'relative' }}>
-                <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)' }} />
                 <input 
                   type="date" 
                   value={startDate}
                   onChange={e => setStartDate(e.target.value)}
-                  style={{ paddingLeft: '32px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-primary)' }}
+                  style={{ 
+                    paddingLeft: '32px', height: '40px', borderRadius: '8px', 
+                    border: '1px solid var(--border-light)', 
+                    background: 'rgba(255, 255, 255, 0.04)', 
+                    color: 'var(--text-primary)',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'var(--transition)'
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border-light)'; e.target.style.boxShadow = 'none'; }}
                 />
               </div>
-              <span style={{ color: 'var(--text-muted)' }}>to</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>to</span>
               <div style={{ position: 'relative' }}>
-                <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <Calendar size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)' }} />
                 <input 
                   type="date" 
                   value={endDate}
                   onChange={e => setEndDate(e.target.value)}
-                  style={{ paddingLeft: '32px', height: '40px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--surface-color)', color: 'var(--text-primary)' }}
+                  style={{ 
+                    paddingLeft: '32px', height: '40px', borderRadius: '8px', 
+                    border: '1px solid var(--border-light)', 
+                    background: 'rgba(255, 255, 255, 0.04)', 
+                    color: 'var(--text-primary)',
+                    fontSize: '14px',
+                    outline: 'none',
+                    transition: 'var(--transition)'
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = 'var(--accent-primary)'; e.target.style.boxShadow = '0 0 0 3px var(--accent-glow)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'var(--border-light)'; e.target.style.boxShadow = 'none'; }}
                 />
               </div>
             </div>
@@ -135,9 +165,23 @@ function DataTable({
           {onExport && (
             <button 
               type="button" 
-              className="primary-btn" 
               onClick={onExport}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '40px' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 8px 24px var(--accent-glow)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 16px var(--accent-glow)';
+              }}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: '8px', height: '40px',
+                background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-hover) 100%)',
+                color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '0 20px',
+                fontWeight: 700, fontSize: '13px', cursor: 'pointer',
+                boxShadow: '0 4px 16px var(--accent-glow)', transition: 'var(--transition)',
+                letterSpacing: '0.4px', textTransform: 'uppercase'
+              }}
             >
               <Download size={16} />
               Export Excel

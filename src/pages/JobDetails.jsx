@@ -109,11 +109,18 @@ function JobDetails() {
         setLiveLog(data);
       }
     };
+    const handleLiveLogClear = (data) => {
+      if (data.jobId === jobId) {
+        setLiveLog(null);
+      }
+    };
     socket.on('job-update', handleJobUpdate);
     socket.on('live-log', handleLiveLog);
+    socket.on('live-log-clear', handleLiveLogClear);
     return () => {
       socket.off('job-update', handleJobUpdate);
       socket.off('live-log', handleLiveLog);
+      socket.off('live-log-clear', handleLiveLogClear);
     };
   }, [jobId, fetchDetails]);
 
@@ -295,13 +302,13 @@ function JobDetails() {
     },
     {
       label: 'Status',
-      key: 'status', 
+      key: 'status',
       render: (r) => (
         <span className={`status-badge status-${r.status}`} style={r.status === 'inprogress' ? { background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.2)' } : {}}>
           {r.status === 'inprogress' && <span className="spinner" style={{ width: '10px', height: '10px', borderWidth: '1.5px', marginRight: '6px' }} />}
           {r.status === 'inprogress' ? 'IN PROGRESS' : r.status.toUpperCase()}
         </span>
-      ) 
+      )
     },
     {
       label: 'Completed At',
@@ -326,18 +333,23 @@ function JobDetails() {
         return (
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             {row.screenshot && (
-              <button
-                type="button"
-                className="screenshot-link"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', padding: '6px', borderRadius: '4px' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedScreenshot(row.screenshot);
-                }}
-                title="View Screenshot"
-              >
-                <ImageIcon size={16} />
-              </button>
+              <div className="screenshot-hover-wrapper">
+                <button
+                  type="button"
+                  className="screenshot-link"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-primary)', padding: '6px', borderRadius: '4px' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedScreenshot(row.screenshot);
+                  }}
+                  title="View Screenshot"
+                >
+                  <ImageIcon size={16} />
+                </button>
+                <div className="screenshot-popup-preview">
+                  <img src={`http://localhost:5000/${row.screenshot}`} alt="preview" style={{ maxWidth: '200px', maxHeight: '150px', display: 'block', borderRadius: '4px', objectFit: 'contain' }} />
+                </div>
+              </div>
             )}
             {row.status === 'failed' && (
               <button
@@ -568,6 +580,46 @@ function JobDetails() {
           </div>
         </div>
       )}
+      <style>{`
+        .screenshot-hover-wrapper {
+          position: relative;
+          display: flex;
+        }
+        .screenshot-popup-preview {
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+
+          transform: translateX(-50%) translateY(-8px);
+          padding: 6px;
+          background: var(--bg-surface, #1e293b);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 8px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+          z-index: 100;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.2s ease;
+          pointer-events: none;
+        }
+        .screenshot-hover-wrapper:hover .screenshot-popup-preview {
+          opacity: 1;
+          visibility: visible;
+          z-index: 100;
+          transform: translateX(-50%) translateY(-12px);
+        }
+        .screenshot-popup-preview::after {
+          content: '';
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          margin-left: -6px;
+          z-index: 100;
+          border-width: 6px;
+          border-style: solid;
+          border-color: rgba(255, 255, 255, 0.1) transparent transparent transparent;
+        }
+      `}</style>
     </>
   );
 }

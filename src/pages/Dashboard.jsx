@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Key, LayoutDashboard, Bot, Trash2, Settings as SettingsIcon, LogOut, Folder, Mail, CheckCircle2, XCircle, Zap, ArrowRight, Activity, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Key, LayoutDashboard, Bot, Trash2, Settings as SettingsIcon, LogOut, Folder, Mail, CheckCircle2, XCircle, Zap, ArrowRight, Activity, Clock, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react';
 import Uploads from './Uploads';
 import Trash from './Trash';
 import JobDetails from './JobDetails';
@@ -12,6 +12,7 @@ function Dashboard({ user, onLogout, activeTab }) {
   const [recentJobs, setRecentJobs] = useState([]);
   const [runningJobs, setRunningJobs] = useState(0);
   const [liveLog, setLiveLog] = useState(null);
+  const [lastJobSummary, setLastJobSummary] = useState(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
 
@@ -19,7 +20,7 @@ function Dashboard({ user, onLogout, activeTab }) {
     try {
       const token = sessionStorage.getItem('token');
       if (!token) return;
-      
+
       // Fetch Global Stats
       const statsRes = await fetch('http://localhost:5000/api/purchases/stats', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -43,6 +44,15 @@ function Dashboard({ user, onLogout, activeTab }) {
       if (filesData.success) {
         setRecentJobs(filesData.data);
       }
+
+      // Fetch Last Job Summary
+      const summaryRes = await fetch('http://localhost:5000/api/purchases/last-job-summary', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const summaryData = await summaryRes.json();
+      if (summaryData.success) {
+        setLastJobSummary(summaryData.data);
+      }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
     }
@@ -50,20 +60,37 @@ function Dashboard({ user, onLogout, activeTab }) {
 
   useEffect(() => {
     fetchStats();
-    
-    const handleJobUpdate = () => {
+
+    const handleJobUpdate = (data) => {
       fetchStats();
+      // Clear live log when job is stopped or completed
+      if (data && (data.status === 'stopped' || data.status === 'completed' || data.status === 'failed' || data.status === 'idle')) {
+        setLiveLog(null);
+      }
     };
 
     const handleLiveLog = (data) => {
-      setLiveLog(data);
+      // Only show live log for active statuses; clear for terminal ones
+      if (data && (data.status === 'success' || data.status === 'failed')) {
+        // Show briefly then clear after 3 seconds
+        setLiveLog(data);
+        setTimeout(() => setLiveLog(null), 3000);
+      } else {
+        setLiveLog(data);
+      }
+    };
+
+    const handleLiveLogClear = () => {
+      setLiveLog(null);
     };
 
     socket.on('job-update', handleJobUpdate);
     socket.on('live-log', handleLiveLog);
+    socket.on('live-log-clear', handleLiveLogClear);
     return () => {
       socket.off('job-update', handleJobUpdate);
       socket.off('live-log', handleLiveLog);
+      socket.off('live-log-clear', handleLiveLogClear);
     };
   }, [activeTab]);
 
@@ -73,40 +100,40 @@ function Dashboard({ user, onLogout, activeTab }) {
       <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-brand">
-            <span className="logo-icon"><Key size={24} color="var(--accent-primary)" /></span>
-            <h2 className="sidebar-title">Login Flow</h2>
+            <span className="logo-icon"><ShoppingCart size={24} color="var(--accent-primary)" /></span>
+            <h2 className="sidebar-title">Purchase Flow</h2>
           </div>
           <button className="sidebar-toggle-btn" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}>
             {isSidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
         <nav className="sidebar-nav">
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`nav-item ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => navigate('/dashboard')}
           >
             <span className="nav-icon"><LayoutDashboard size={18} /></span>
             <span className="nav-label">Dashboard</span>
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`nav-item ${activeTab === 'uploads' ? 'active' : ''}`}
             onClick={() => navigate('/uploads')}
           >
             <span className="nav-icon"><Bot size={18} /></span>
             <span className="nav-label">Automation</span>
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`nav-item ${activeTab === 'trash' ? 'active' : ''}`}
             onClick={() => navigate('/trash')}
           >
             <span className="nav-icon"><Trash2 size={18} /></span>
             <span className="nav-label">Trash</span>
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
             onClick={() => navigate('/settings')}
           >
@@ -128,11 +155,11 @@ function Dashboard({ user, onLogout, activeTab }) {
         <header className="content-header">
           <div className="header-title">
             <h1>
-              {activeTab === 'overview' ? 'Dashboard' 
-               : activeTab === 'trash' ? 'Trash' 
-               : activeTab === 'job' ? 'Job Details'
-               : activeTab === 'settings' ? 'Settings'
-               : 'Purchase Automation'}
+              {activeTab === 'overview' ? 'Dashboard'
+                : activeTab === 'trash' ? 'Trash'
+                  : activeTab === 'job' ? 'Job Details'
+                    : activeTab === 'settings' ? 'Settings'
+                      : 'Purchase Automation'}
             </h1>
             <p>Welcome back, {user.email}</p>
           </div>
@@ -215,49 +242,90 @@ function Dashboard({ user, onLogout, activeTab }) {
                 </div>
               )}
 
-              <div className="dashboard-content-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'flex-start' }}>
-                {/* ── Recent Activity Table ── */}
-                <div className="card" style={{ margin: 0, minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <Activity size={20} color="var(--accent-primary)" />
-                      <h3 style={{ margin: 0 }}>Recent Activity</h3>
-                    </div>
-                    <button type="button" className="text-btn" onClick={() => navigate('/uploads')} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      View All <ArrowRight size={14} />
-                    </button>
+              <div className="dashboard-content-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'flex-start' }}>
+
+                {/* ── Last Job Summary ── */}
+                <div className="card" style={{ margin: 0, padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                    <Clock size={20} color="#f59e0b" />
+                    <h3 style={{ margin: 0 }}>Last Job Summary</h3>
                   </div>
-                  
-                  {recentJobs.length === 0 ? (
-                    <div className="empty-state" style={{ padding: '32px 0' }}>
-                      <p style={{ color: 'var(--text-muted)' }}>No recent jobs found.</p>
+
+                  {!lastJobSummary ? (
+                    <div className="empty-state" style={{ padding: '24px 0' }}>
+                      <p style={{ color: 'var(--text-muted)' }}>No jobs found yet.</p>
                     </div>
                   ) : (
-                    <div className="table-responsive" style={{ margin: '0 -24px -24px -24px', borderRadius: '0 0 12px 12px', overflowX: 'auto' }}>
-                      <table className="data-table" style={{ borderBottom: 'none', width: '100%', minWidth: '400px' }}>
-                        <thead>
-                          <tr>
-                            <th>Job Name</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {recentJobs.map(job => (
-                            <tr key={job._id} onClick={() => navigate(`/job/${job._id}`)} style={{ cursor: 'pointer' }}>
-                              <td>
-                                <span style={{ fontWeight: 600, color: 'var(--text-primary)', maxWidth: '200px', display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {job.uploadedFile}
-                                </span>
-                              </td>
-                              <td><span className={`status-badge status-${job.status}`}>{job.status}</span></td>
-                              <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
-                                {new Date(job.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      {/* Job info */}
+                      <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '10px', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '15px', color: '#f8fafc', maxWidth: '60%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {lastJobSummary.jobName}
+                          </span>
+                          <span className={`status-badge status-${lastJobSummary.jobStatus}`}>{lastJobSummary.jobStatus}</span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                          {new Date(lastJobSummary.jobCreatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        {/* Counts row */}
+                        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}>
+                            <Mail size={12} color="#60a5fa" />
+                            <span style={{ fontSize: '12px', color: '#60a5fa', fontWeight: 600 }}>{lastJobSummary.totalRecords} Total</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                            <CheckCircle2 size={12} color="#34d399" />
+                            <span style={{ fontSize: '12px', color: '#34d399', fontWeight: 600 }}>{lastJobSummary.successCount} Success</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                            <XCircle size={12} color="#f87171" />
+                            <span style={{ fontSize: '12px', color: '#f87171', fontWeight: 600 }}>{lastJobSummary.failedCount} Failed</span>
+                          </div>
+                          {lastJobSummary.pendingCount > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 10px', borderRadius: '6px', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                              <Clock size={12} color="#fbbf24" />
+                              <span style={{ fontSize: '12px', color: '#fbbf24', fontWeight: 600 }}>{lastJobSummary.pendingCount} Pending</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Last processed record */}
+                      {lastJobSummary.lastRecord && (
+                        <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '10px', padding: '14px 16px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', fontWeight: 600 }}>
+                            Last Processed Task
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <Mail size={14} color="var(--text-muted)" />
+                            <span style={{ fontWeight: 600, fontSize: '14px', color: '#f8fafc' }}>{lastJobSummary.lastRecord.email}</span>
+                            {lastJobSummary.lastRecord.name && (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>— {lastJobSummary.lastRecord.name}</span>
+                            )}
+                            <span className={`status-badge status-${lastJobSummary.lastRecord.status}`} style={{ fontSize: '10px', padding: '2px 8px', marginLeft: 'auto' }}>
+                              {lastJobSummary.lastRecord.status}
+                            </span>
+                          </div>
+                          {lastJobSummary.lastRecord.reason && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', paddingLeft: '22px', marginBottom: '4px' }}>
+                              <ArrowRight size={12} color="#60a5fa" style={{ marginTop: '3px', flexShrink: 0 }} />
+                              <span style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.4', wordBreak: 'break-word' }}>
+                                {lastJobSummary.lastRecord.reason}
+                              </span>
+                            </div>
+                          )}
+                          {lastJobSummary.lastRecord.orderId && (
+                            <div style={{ paddingLeft: '22px', fontSize: '12px', color: '#34d399' }}>
+                              Order ID: {lastJobSummary.lastRecord.orderId}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <button type="button" className="text-btn" onClick={() => navigate(`/job/${lastJobSummary.jobId}`)} style={{ fontSize: '13px', color: '#60a5fa', alignSelf: 'flex-end' }}>
+                        View Job Details →
+                      </button>
                     </div>
                   )}
                 </div>
@@ -269,7 +337,7 @@ function Dashboard({ user, onLogout, activeTab }) {
                     <h3 style={{ margin: 0 }}>Quick Actions</h3>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <button 
+                    <button
                       className="quick-action-btn"
                       onClick={() => navigate('/uploads')}
                       style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }}
@@ -284,8 +352,8 @@ function Dashboard({ user, onLogout, activeTab }) {
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Upload Excel to start</div>
                       </div>
                     </button>
-                    
-                    <button 
+
+                    <button
                       className="quick-action-btn"
                       onClick={() => navigate('/trash')}
                       style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }}
@@ -301,7 +369,7 @@ function Dashboard({ user, onLogout, activeTab }) {
                       </div>
                     </button>
 
-                    <button 
+                    <button
                       className="quick-action-btn"
                       onClick={() => navigate('/settings')}
                       style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', cursor: 'pointer', textAlign: 'left', transition: 'var(--transition)' }}
@@ -318,6 +386,80 @@ function Dashboard({ user, onLogout, activeTab }) {
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* ── Recent Activity Table (full width below) ── */}
+              <div className="card" style={{ marginTop: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Activity size={20} color="var(--accent-primary)" />
+                    <h3 style={{ margin: 0 }}>Recent Activity</h3>
+                  </div>
+                  <button type="button" className="text-btn" onClick={() => navigate('/uploads')} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    View All <ArrowRight size={14} />
+                  </button>
+                </div>
+
+                {recentJobs.length === 0 ? (
+                  <div className="empty-state" style={{ padding: '32px 0' }}>
+                    <p style={{ color: 'var(--text-muted)' }}>No recent jobs found.</p>
+                  </div>
+                ) : (
+                  <div style={{ margin: '0 -24px -24px -24px', borderRadius: '0 0 12px 12px', overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <colgroup>
+                        <col style={{ width: '35%' }} />
+                        <col style={{ width: '14%' }} />
+                        <col style={{ width: '11%' }} />
+                        <col style={{ width: '13%' }} />
+                        <col style={{ width: '13%' }} />
+                        <col style={{ width: '14%' }} />
+                      </colgroup>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                          <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Job Name</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#34d399', textTransform: 'uppercase', letterSpacing: '0.5px' }}>✓ Success</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center', fontSize: '12px', fontWeight: 600, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.5px' }}>✕ Failed</th>
+                          <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentJobs.map(job => (
+                          <tr
+                            key={job._id}
+                            onClick={() => navigate(`/job/${job._id}`)}
+                            style={{ cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
+                              <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {job.uploadedFile}
+                              </span>
+                            </td>
+                            <td style={{ padding: '14px 8px', textAlign: 'center', verticalAlign: 'middle' }}>
+                              <span className={`status-badge status-${job.status}`} style={{ fontSize: '11px' }}>{job.status}</span>
+                            </td>
+                            <td style={{ padding: '14px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 700, fontSize: '14px', color: '#e2e8f0' }}>
+                              {job.totalRecords || 0}
+                            </td>
+                            <td style={{ padding: '14px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 700, fontSize: '14px', color: '#34d399' }}>
+                              {job.successCount || 0}
+                            </td>
+                            <td style={{ padding: '14px 8px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 700, fontSize: '14px', color: '#f87171' }}>
+                              {job.failedCount || 0}
+                            </td>
+                            <td style={{ padding: '14px 20px', textAlign: 'right', verticalAlign: 'middle', color: 'var(--text-muted)', fontSize: '13px' }}>
+                              {new Date(job.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           ) : activeTab === 'trash' ? (
