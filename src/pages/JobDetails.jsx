@@ -4,6 +4,7 @@ import { CheckCircle2, AlertTriangle, Image as ImageIcon, RotateCcw, XCircle, Pl
 import DataTable from '../components/DataTable';
 import ConfirmModal from '../components/ConfirmModal';
 import { socket } from '../socket';
+import { API_BASE_URL } from '../config';
 
 let toastId = 0;
 function ToastContainer({ toasts }) {
@@ -66,7 +67,7 @@ function JobDetails() {
         endDate: tableParams.endDate
       });
 
-      const res = await fetch(`http://localhost:5000/api/purchases/file-details?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/file-details?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -140,7 +141,7 @@ function JobDetails() {
     });
 
     try {
-      const res = await fetch(`http://localhost:5000/api/purchases/export?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/export?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Export failed');
@@ -162,7 +163,7 @@ function JobDetails() {
     setAutomationLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/purchases/start-automation', {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/start-automation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ jobId, headless: !showBrowser })
@@ -185,7 +186,7 @@ function JobDetails() {
         setAutomationLoading(true);
         try {
           const token = sessionStorage.getItem('token');
-          const res = await fetch('http://localhost:5000/api/purchases/stop-automation', {
+          const res = await fetch(`${API_BASE_URL}/api/purchases/stop-automation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ jobId })
@@ -206,7 +207,7 @@ function JobDetails() {
     setAutomationLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/purchases/retry-automation', {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/retry-automation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ jobId, reasonFilter, headless: !showBrowser })
@@ -224,7 +225,7 @@ function JobDetails() {
     setAutomationLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/purchases/retry-single', {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/retry-single`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ recordId, headless: !showBrowser })
@@ -347,7 +348,7 @@ function JobDetails() {
                   <ImageIcon size={16} />
                 </button>
                 <div className="screenshot-popup-preview">
-                  <img src={`http://localhost:5000/${row.screenshot}`} alt="preview" style={{ maxWidth: '200px', maxHeight: '150px', display: 'block', borderRadius: '4px', objectFit: 'contain' }} />
+                  <img src={`${API_BASE_URL}/${row.screenshot}`} alt="preview" style={{ maxWidth: '200px', maxHeight: '150px', display: 'block', borderRadius: '4px', objectFit: 'contain' }} />
                 </div>
               </div>
             )}
@@ -573,7 +574,7 @@ function JobDetails() {
               <XCircle size={32} />
             </button>
             <img
-              src={`http://localhost:5000/${selectedScreenshot}`}
+              src={`${API_BASE_URL}/${selectedScreenshot}`}
               alt="Screenshot"
               style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}
             />

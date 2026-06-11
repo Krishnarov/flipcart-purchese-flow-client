@@ -3,6 +3,7 @@ import { CheckCircle2, AlertTriangle, RotateCcw, Trash2, Sparkles, Inbox } from 
 import DataTable from '../components/DataTable';
 import ConfirmModal from '../components/ConfirmModal';
 import { socket } from '../socket';
+import { API_BASE_URL } from '../config';
 
 let toastId = 0;
 function ToastContainer({ toasts }) {
@@ -57,7 +58,7 @@ function Trash() {
         endDate: tableParams.endDate
       });
 
-      const res = await fetch(`http://localhost:5000/api/purchases/trash?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/trash?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -104,7 +105,7 @@ function Trash() {
     });
     
     try {
-      const res = await fetch(`http://localhost:5000/api/purchases/export?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/export?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Export failed');
@@ -137,7 +138,7 @@ function Trash() {
       const token = sessionStorage.getItem('token');
       await Promise.allSettled(
         jobIds.map(async id => {
-          const res = await fetch(`http://localhost:5000/api/purchases/restore/${id}`, {
+          const res = await fetch(`${API_BASE_URL}/api/purchases/restore/${id}`, {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -167,7 +168,7 @@ function Trash() {
           const token = sessionStorage.getItem('token');
           await Promise.allSettled(
             jobIds.map(async id => {
-              const res = await fetch(`http://localhost:5000/api/purchases/permanent-delete/${id}`, {
+              const res = await fetch(`${API_BASE_URL}/api/purchases/permanent-delete/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` }
               });

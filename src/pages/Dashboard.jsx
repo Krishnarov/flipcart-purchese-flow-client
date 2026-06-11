@@ -6,6 +6,7 @@ import Trash from './Trash';
 import JobDetails from './JobDetails';
 import Settings from './Settings';
 import { socket } from '../socket';
+import { API_BASE_URL } from '../config';
 
 function Dashboard({ user, onLogout, activeTab }) {
   const [globalStats, setGlobalStats] = useState({ jobs: 0, total: 0, success: 0, failed: 0 });
@@ -22,7 +23,7 @@ function Dashboard({ user, onLogout, activeTab }) {
       if (!token) return;
 
       // Fetch Global Stats
-      const statsRes = await fetch('http://localhost:5000/api/purchases/stats', {
+      const statsRes = await fetch(`${API_BASE_URL}/api/purchases/stats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const statsData = await statsRes.json();
@@ -37,7 +38,7 @@ function Dashboard({ user, onLogout, activeTab }) {
       }
 
       // Fetch Recent Jobs
-      const filesRes = await fetch('http://localhost:5000/api/purchases/files?page=1&limit=5', {
+      const filesRes = await fetch(`${API_BASE_URL}/api/purchases/files?page=1&limit=5`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const filesData = await filesRes.json();
@@ -46,7 +47,7 @@ function Dashboard({ user, onLogout, activeTab }) {
       }
 
       // Fetch Last Job Summary
-      const summaryRes = await fetch('http://localhost:5000/api/purchases/last-job-summary', {
+      const summaryRes = await fetch(`${API_BASE_URL}/api/purchases/last-job-summary`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const summaryData = await summaryRes.json();
@@ -241,6 +242,215 @@ function Dashboard({ user, onLogout, activeTab }) {
                   </div>
                 </div>
               )}
+
+              {/* ── 4 Charts Row ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+
+                {/* Chart 1: Overall Stats Donut */}
+                <div className="card" style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                    <span style={{ fontSize: '16px' }}>🍩</span>
+                    <h3 style={{ margin: 0, fontSize: '15px' }}>Overall Stats</h3>
+                  </div>
+                  {(() => {
+                    const s = globalStats.success;
+                    const f = globalStats.failed;
+                    const p = Math.max(0, globalStats.total - s - f);
+                    const total = globalStats.total || 1;
+                    const pctS = (s / total) * 100;
+                    const pctF = (f / total) * 100;
+                    const pctP = (p / total) * 100;
+                    // SVG donut
+                    const r = 54; const cx = 70; const cy = 70;
+                    const circ = 2 * Math.PI * r;
+                    const segS = (pctS / 100) * circ;
+                    const segF = (pctF / 100) * circ;
+                    const segP = (pctP / 100) * circ;
+                    const offS = 0;
+                    const offF = circ - segS;
+                    const offP = circ - segS - segF;
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                        <svg width="140" height="140" style={{ flexShrink: 0 }}>
+                          <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="18" />
+                          {total > 0 && <>
+                            <circle cx={cx} cy={cy} r={r} fill="none" stroke="#34d399" strokeWidth="18"
+                              strokeDasharray={`${segS} ${circ - segS}`}
+                              strokeDashoffset={circ * 0.25}
+                              style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+                            <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f87171" strokeWidth="18"
+                              strokeDasharray={`${segF} ${circ - segF}`}
+                              strokeDashoffset={circ * 0.25 - segS}
+                              style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+                            <circle cx={cx} cy={cy} r={r} fill="none" stroke="#fbbf24" strokeWidth="18"
+                              strokeDasharray={`${segP} ${circ - segP}`}
+                              strokeDashoffset={circ * 0.25 - segS - segF}
+                              style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+                          </> }
+                          <text x={cx} y={cy - 8} textAnchor="middle" fill="#f8fafc" fontSize="20" fontWeight="700">{globalStats.total}</text>
+                          <text x={cx} y={cy + 12} textAnchor="middle" fill="#64748b" fontSize="11">Total</text>
+                        </svg>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', flex: 1 }}>
+                          {[['#34d399','Success', s],['#f87171','Failed', f],['#fbbf24','Pending', p]].map(([color, label, val]) => (
+                            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: color, flexShrink: 0 }} />
+                              <span style={{ fontSize: '12px', color: 'var(--text-muted)', flex: 1 }}>{label}</span>
+                              <span style={{ fontSize: '13px', fontWeight: 700, color }}>{val}</span>
+                            </div>
+                          ))}
+                          <div style={{ marginTop: '4px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                            {globalStats.jobs} Jobs Total
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Chart 2: Last Job Progress */}
+                <div className="card" style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                    <span style={{ fontSize: '16px' }}>📊</span>
+                    <h3 style={{ margin: 0, fontSize: '15px' }}>Last Job Progress</h3>
+                  </div>
+                  {!lastJobSummary ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No job data yet.</p>
+                  ) : (() => {
+                    const t = lastJobSummary.totalRecords || 1;
+                    const rows = [
+                      { label: 'Total Orders', val: lastJobSummary.totalRecords, color: '#60a5fa', pct: 100 },
+                      { label: 'Successful', val: lastJobSummary.successCount, color: '#34d399', pct: Math.round((lastJobSummary.successCount / t) * 100) },
+                      { label: 'Failed', val: lastJobSummary.failedCount, color: '#f87171', pct: Math.round((lastJobSummary.failedCount / t) * 100) },
+                      { label: 'Pending', val: lastJobSummary.pendingCount, color: '#fbbf24', pct: Math.round((lastJobSummary.pendingCount / t) * 100) },
+                    ];
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '-4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {lastJobSummary.jobName}
+                        </div>
+                        {rows.map(({ label, val, color, pct }) => (
+                          <div key={label}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                              <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{label}</span>
+                              <span style={{ fontSize: '12px', fontWeight: 700, color }}>{val} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({pct}%)</span></span>
+                            </div>
+                            <div style={{ height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '4px', transition: 'width 0.6s ease' }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Chart 3: Job Performance Bar Chart */}
+                <div className="card" style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                    <span style={{ fontSize: '16px' }}>📈</span>
+                    <h3 style={{ margin: 0, fontSize: '15px' }}>Job Performance</h3>
+                  </div>
+                  {recentJobs.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No jobs yet.</p>
+                  ) : (() => {
+                    const maxVal = Math.max(...recentJobs.map(j => j.totalRecords || 0), 1);
+                    const chartH = 120;
+                    const barW = Math.min(36, Math.floor(300 / recentJobs.length) - 8);
+                    return (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: `${chartH}px`, paddingBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                          {recentJobs.map((job, i) => {
+                            const t = job.totalRecords || 0;
+                            const s = job.successCount || 0;
+                            const f = job.failedCount || 0;
+                            const hT = (t / maxVal) * chartH;
+                            const hS = t > 0 ? (s / t) * hT : 0;
+                            const hF = t > 0 ? (f / t) * hT : 0;
+                            const hP = hT - hS - hF;
+                            return (
+                              <div key={job._id} title={`${job.uploadedFile}\nTotal: ${t} | Success: ${s} | Failed: ${f}`}
+                                style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', width: `${barW}px`, height: `${chartH}px`, cursor: 'pointer', flexShrink: 0 }}
+                                onClick={() => navigate(`/job/${job._id}`)}
+                              >
+                                {hP > 0 && <div style={{ height: `${hP}px`, background: '#fbbf24', borderRadius: '2px 2px 0 0' }} />}
+                                {hF > 0 && <div style={{ height: `${hF}px`, background: '#f87171' }} />}
+                                {hS > 0 && <div style={{ height: `${hS}px`, background: '#34d399', borderRadius: hP === 0 && hF === 0 ? '2px 2px 0 0' : '0' }} />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                          {recentJobs.map((job) => (
+                            <div key={job._id} style={{ width: `${barW}px`, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '9px', color: 'var(--text-muted)', textAlign: 'center' }}
+                              title={job.uploadedFile}>
+                              {job.uploadedFile.replace(/\.[^.]+$/, '').substring(0, 8)}
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: '14px', marginTop: '12px' }}>
+                          {[['#34d399','Success'],['#f87171','Failed'],['#fbbf24','Pending']].map(([c,l]) => (
+                            <div key={l} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <div style={{ width: '8px', height: '8px', background: c, borderRadius: '1px' }} />
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{l}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Chart 4: Success Rate Trend */}
+                <div className="card" style={{ padding: '24px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+                    <span style={{ fontSize: '16px' }}>📉</span>
+                    <h3 style={{ margin: 0, fontSize: '15px' }}>Success Rate Trend</h3>
+                  </div>
+                  {recentJobs.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No jobs yet.</p>
+                  ) : (() => {
+                    const jobs = [...recentJobs].reverse();
+                    const W = 280; const H = 110;
+                    const rates = jobs.map(j => j.totalRecords > 0 ? Math.round((j.successCount / j.totalRecords) * 100) : 0);
+                    const pts = rates.map((r, i) => {
+                      const x = jobs.length === 1 ? W / 2 : (i / (jobs.length - 1)) * W;
+                      const y = H - (r / 100) * H;
+                      return `${x},${y}`;
+                    });
+                    const polyline = pts.join(' ');
+                    const areaPath = `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')} L ${jobs.length === 1 ? W/2 : W},${H} L 0,${H} Z`;
+                    const avgRate = rates.length > 0 ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : 0;
+                    return (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Avg Success Rate</span>
+                          <span style={{ fontSize: '22px', fontWeight: 800, color: avgRate >= 70 ? '#34d399' : avgRate >= 40 ? '#fbbf24' : '#f87171' }}>{avgRate}%</span>
+                        </div>
+                        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+                          <defs>
+                            <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.3" />
+                              <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
+                          <path d={areaPath} fill="url(#areaGrad)" />
+                          <polyline points={polyline} fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+                          {pts.map((p, i) => {
+                            const [x, y] = p.split(',').map(Number);
+                            return <circle key={i} cx={x} cy={y} r="4" fill="#8b5cf6" stroke="#1e1b2e" strokeWidth="2" />;
+                          })}
+                          <line x1="0" y1={H} x2={W} y2={H} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+                        </svg>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{jobs[0]?.uploadedFile?.substring(0, 10)}…</span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Latest</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+              </div>
 
               <div className="dashboard-content-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'flex-start' }}>
 

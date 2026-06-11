@@ -4,6 +4,7 @@ import { CheckCircle2, AlertTriangle, Play, Square, Trash2, Folder, Mail, Zap, X
 import DataTable from '../components/DataTable';
 import ConfirmModal from '../components/ConfirmModal';
 import { socket } from '../socket';
+import { API_BASE_URL } from '../config';
 
 let toastId = 0;
 function ToastContainer({ toasts }) {
@@ -53,7 +54,7 @@ function Uploads({ onUploadSuccess }) {
       const token = sessionStorage.getItem('token');
       if (!token) return;
 
-      const statsRes = await fetch('http://localhost:5000/api/purchases/stats', {
+      const statsRes = await fetch(`${API_BASE_URL}/api/purchases/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const statsData = await statsRes.json();
@@ -71,7 +72,7 @@ function Uploads({ onUploadSuccess }) {
         endDate: tableParams.endDate
       });
 
-      const res = await fetch(`http://localhost:5000/api/purchases/files?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/files?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -116,7 +117,7 @@ function Uploads({ onUploadSuccess }) {
     });
     
     try {
-      const res = await fetch(`http://localhost:5000/api/purchases/export?${params.toString()}`, {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/export?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (!res.ok) throw new Error('Export failed');
@@ -138,7 +139,7 @@ function Uploads({ onUploadSuccess }) {
     setAutomationLoading(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/purchases/start-automation', {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/start-automation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ jobId, headless: true })
@@ -161,7 +162,7 @@ function Uploads({ onUploadSuccess }) {
         setAutomationLoading(true);
         try {
           const token = sessionStorage.getItem('token');
-          const res = await fetch('http://localhost:5000/api/purchases/stop-automation', {
+          const res = await fetch(`${API_BASE_URL}/api/purchases/stop-automation`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ jobId })
@@ -187,7 +188,7 @@ function Uploads({ onUploadSuccess }) {
         setDeleteLoading(jobId);
         try {
           const token = sessionStorage.getItem('token');
-          const res = await fetch(`http://localhost:5000/api/purchases/soft-delete/${jobId}`, {
+          const res = await fetch(`${API_BASE_URL}/api/purchases/soft-delete/${jobId}`, {
             method: 'PATCH',
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -235,7 +236,7 @@ function Uploads({ onUploadSuccess }) {
     formData.append('file', file);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/purchases/upload', {
+      const res = await fetch(`${API_BASE_URL}/api/purchases/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData
